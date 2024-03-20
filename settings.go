@@ -47,11 +47,6 @@ func (r *RegularExpression) MarshalText() ([]byte, error) {
 	return nil, nil
 }
 
-type Settings struct {
-	DeniedAnnotations      mapset.Set[string]            `json:"denied_annotations"`
-	MandatoryAnnotations   mapset.Set[string]            `json:"mandatory_annotations"`
-	ConstrainedAnnotations map[string]*RegularExpression `json:"constrained_annotations"`
-}
 
 // Builds a new Settings instance starting from a validation
 // request payload:

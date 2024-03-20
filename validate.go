@@ -6,10 +6,18 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/kubewarden/gjson"
 	kubewarden "github.com/kubewarden/policy-sdk-go"
 	kubewarden_protocol "github.com/kubewarden/policy-sdk-go/protocol"
 )
+func parsePublicKey(pemEncoded string) (*jwt.PublicKey, error) {
+    publicKey, err := jwt.ParseECPublicKeyFromPEM([]byte(pemEncoded))
+    if err != nil {
+        return nil, err
+    }
+    return publicKey, nil
+}
 
 func validate(payload []byte) ([]byte, error) {
 	// Create a ValidationRequest instance from the incoming payload
@@ -33,8 +41,11 @@ func validate(payload []byte) ([]byte, error) {
 		"request.object.metadata.annotations")
 
 	annotations := mapset.NewThreadUnsafeSet[string]()
-	deniedAnnotationsViolations := []string{}
-	constrainedAnnotationsViolations := []string{}
+
+	const publicKeyPEM = `      -----BEGIN PUBLIC KEY-----
+	MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEF5/niXFLraxfyQWi5d43p0oyyJPM
+	PoEygPHn86mdWdJFO8pcGAFSBk8Sh0d5OHL0QbZFbStzp1cU/Zjj1MNdtA==
+	-----END PUBLIC KEY-----`
 
 	data.ForEach(func(key, value gjson.Result) bool {
 		annotation := key.String()
@@ -45,49 +56,29 @@ func validate(payload []byte) ([]byte, error) {
 			return true
 		}
 
-		regExp, found := settings.ConstrainedAnnotations[annotation]
-		if found {
-			// This is a constrained annotation
-			if !regExp.Match([]byte(value.String())) {
-				constrainedAnnotationsViolations = append(constrainedAnnotationsViolations, annotation)
-				return true
+		// Inside your data.ForEach loop where you iterate over annotations
+    	// Let's assume the JWT is stored in an annotation named "encrypted.jwt"
+		if annotation == "ncp.hyland.com/opa-exemption/jwt" {
+			publicKey, err := parsePublicKey(publicKeyPEM)
+			if err != nil {
+				// Handle error
+				return false 
 			}
+		
+
+		
+			if err != nil || !token.Valid {
+				// JWT is invalid or there was an error parsing it
+				return false //kubewarden.RejectRequest(
+					//kubewarden.Message("Invalid JWT token"),
+					//kubewarden.NoCode)
+			}		
 		}
 
-		return true
+		return true//this is the default true, if we have made it here, its a valid JWT
 	})
 
 	errorMsgs := []string{}
-
-	if len(deniedAnnotationsViolations) > 0 {
-		errorMsgs = append(
-			errorMsgs,
-			fmt.Sprintf(
-				"The following annotations are not allowed: %s",
-				strings.Join(deniedAnnotationsViolations, ","),
-			))
-	}
-
-	if len(constrainedAnnotationsViolations) > 0 {
-		errorMsgs = append(
-			errorMsgs,
-			fmt.Sprintf(
-				"The following annotations are violating user constraints: %s",
-				strings.Join(constrainedAnnotationsViolations, ","),
-			))
-	}
-
-	mandatoryAnnotationsViolations := settings.MandatoryAnnotations.Difference(annotations)
-	if mandatoryAnnotationsViolations.Cardinality() > 0 {
-		violations := mandatoryAnnotationsViolations.ToSlice()
-
-		errorMsgs = append(
-			errorMsgs,
-			fmt.Sprintf(
-				"The following mandatory annotations are missing: %s",
-				strings.Join(violations, ","),
-			))
-	}
 
 	if len(errorMsgs) > 0 {
 		return kubewarden.RejectRequest(

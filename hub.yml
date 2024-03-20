@@ -1,12 +1,12 @@
-name: safe-annotations
+name: jwt-exemptions
 description: A policy that validates Kubernetes' resource annotations
-homepage: https://github.com/kubewarden/safe-annotations-policy
+homepage: https://github.com/seanbird/jwt-exemptions-policy
 author:
   name: Kubewarden devs
-  homepage: https://github.com/kubewarden
+  homepage: https://github.com/seanbird
 download:
-  registry: ghcr.io/kubewarden/policies/safe-annotations:__TAG__
-  url: https://github.com/kubewarden/safe-annotations-policy/releases/download/__TAG__/policy.wasm
+  registry: x.io.x/policies/jwt-exemptions:__TAG__
+  url: https://github.com/seanbird/jwt-exemptions-policy/releases/download/__TAG__/policy.wasm
 keywords:
   - Annotations
 resources:
